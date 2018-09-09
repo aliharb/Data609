@@ -1,0 +1,370 @@
+---
+title: "DATA 609 HW 1"
+author: "Ali Harb"
+date: "September 3, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Headers 
+
+```{r warning=FALSE, message=FALSE}
+
+library(reshape)
+library(DT)
+library(ggplot2)
+library(tidyr)
+library(dplyr)
+library(knitr)
+library(grid)
+library(gridExtra)
+```
+
+
+## Q 10 -P8
+
+Your grandparents have an annuity. The value of the annuity increases each month by an automatic deposit of 1% interest on the previous month's balance. Your grandparents withdraw $1,000 at the beginning of each month for living expenses. Currently, they have $50,000 in the annuity. Model the annuity with a dynamical system. Will the annuity run out of money? When? Hint: What value will an have when the annuity is depleted?
+
+<br>
+
+![](Data 609 HW1 Pic/Q8p10_1.png)
+
+<br>
+
+```{r}
+rate <- 1.01
+aunuity <- 50000
+Withdraw <- 1000
+n <- 0
+
+# initialize data frame to track balance by period
+result_df <- data.frame(Monthly_Period = integer(), Balance = numeric())
+
+while (aunuity > 0) {
+    result_df[n + 1, ] <- c(n, aunuity)
+    aunuity = rate * aunuity - Withdraw
+    n <- n + 1
+}
+```
+
+<br>
+
+#### Plotting  the result  
+<br>
+```{r}
+p <- ggplot(result_df, aes(x = Monthly_Period, y = Balance)) + geom_line() + ggtitle("Monthly Period VS Balance")
+p  + theme_linedraw() + theme_light()
+```
+
+
+#### Tabulated results
+<br>
+```{r}
+datatable(round(result_df,3), options = list(
+  order = list(1, 'desc'),
+  pageLength = 5,
+  lengthMenu = c(5, 15, 25, 70)
+  ))
+```
+
+
+### Using the dynamic system model:
+
+<br>
+
+![](Data 609 HW1 Pic/Q8p10_2.png)
+
+<br>
+
+```{r}
+k=floor(log(-100000/-50000)/log(1.01))
+print(paste("k = ",k))
+```
+
+## Q9 -P17
+
+The data in the accompanying table show the speed n (in increments of 5 mph) of an automobile and the associated distance an in feet required to stop it once the brakes are applied. For instance, n D 6 (representing 6 x 5 D 30 mph) requires a stopping distance of a6 D 47 ft. 
+<br>
+<br>
+
+```{r}
+# reconstruct data in text; save to df
+Result_df <- as.data.frame(matrix(0, ncol = 16, nrow = 2))
+n <- (seq(1, 16))
+colnames(Result_df)<-n
+row.names(Result_df)[1]<-"n"
+row.names(Result_df)[2]<-"a_n"
+a_n <- c(3, 6, 11, 21, 32, 47, 65, 87, 112, 140, 171, 204, 241, 282, 325, 376)
+Result_df[1,] <- n
+Result_df[2,] <- a_n
+
+datatable(Result_df, 
+          rownames = TRUE,
+          colnames=NULL,
+          options = list(autoWidth = TRUE,
+                         pageLength = 2,
+                         lengthMenu =c(1,2),
+                         list(dom = 't')))
+```
+
+
+#### a. Calculate and plot the change delta an versus n. Does the graph reasonably approximate a linear relationship?
+<br>
+<br>
+
+```{r}
+
+plot_df<-data.frame(n,a_n)
+p <- ggplot(plot_df, aes(x = n, y = a_n)) + geom_point() + 
+  ggtitle("Distance vs. Speed") +
+  theme_linedraw() + theme_light()
+p +labs(x = "Speed (n)",y="Distance (a_n)")
+```
+
+As shown, the relationship between these two variables doesn't approximate a linear relationship.
+
+#### b. Based on your conclusions in part (a),find a difference equation model for the stopping distance data. Test your model by plotting the errors in the predicted values against n. Discuss the appropriateness of the model.
+<br>
+<br>
+
+```{r warning=FALSE, message=FALSE}
+Delta_a<-vector(mode="numeric", length=16)
+for(i in 1:(length(Result_df)-1)){
+Delta_a[i] <- Result_df[2,(i+1)]-Result_df[2,i]
+}
+Delta_a<-as.character(Delta_a)
+Delta_a[16]<-""
+Result_df<-rbind(Result_df,Delta_a)
+row.names(Result_df)[3]<-"Delat_a"
+datatable(Result_df, 
+          rownames = TRUE,
+          options = list(autoWidth = TRUE,
+                         pageLength = 3,
+                         lengthMenu =c(1,2,3)))
+
+
+plot_df <- plot_df %>% mutate(Delta_a = lead(a_n) - a_n)
+
+
+p <- ggplot(plot_df, aes(x = n, y = Delta_a)) + geom_point() + 
+  ggtitle("Distance vs. Speed") +
+  geom_smooth(method = "lm", color = "blue", se = FALSE) +
+  theme_linedraw() + theme_light() 
+p + labs(x = "Speed (n)",y="Distance (a_n)")
+```
+
+<br>
+Since the relationship is linear, we can choose any two corresponded points on the graph to find the rate. We could also divide the sum of delta_a values over the sum of n values.
+<br>
+<br>
+Take the point where n is equal 14 and delta_a is equal to 43, k can found.
+<br>
+<br>
+![](Data 609 HW1 Pic/Q9p17_1.png)
+
+
+```{r}
+#k=(plot_df$Delta_a[14]/plot_df$n[14])
+k=sum(plot_df$Delta_a,na.rm=TRUE)/(sum(plot_df$n)-16)
+
+
+pred_an<-vector(mode="numeric", length=16)
+pred_an <- 3
+for(i in 2:(length(Result_df))){
+pred_an[i] <-pred_an[i-1]+k*plot_df$n[i-1]
+}
+
+Result_df<-rbind(Result_df,round(pred_an,2))
+row.names(Result_df)[4]<-"Pred_an"
+
+plot_df["pred_an"] <- round(pred_an, 2)
+
+error<- plot_df$pred_an - plot_df$a_n
+Result_df<-rbind(Result_df,round(error,2))
+row.names(Result_df)[5]<-"Error"
+
+plot_df["Error"] <- round(error, 2)
+
+datatable(Result_df, 
+          rownames = TRUE,
+          options = list(autoWidth = TRUE,
+                         pageLength = 5,
+                         lengthMenu =c(1,2,3,4,5),
+                         list(dom = 't')))
+
+```
+
+
+
+```{r}
+e <- ggplot(plot_df, aes(x = n, y = Error)) + geom_point() + 
+  ggtitle("Speed VS Error ")+
+  theme_linedraw() + theme_light() 
+e + labs(x = "Speed (n)",y="Error")
+  
+```
+
+
+The prediction generates approximate values of the actual data. The prediction produces positive errors. The plot of the error vs speed shows a similar slop line. 
+
+
+## Q13 -P34
+
+Consider the spreading of a rumor through a company of 1000 employees, all working in the same building. We assume that the spreading of a rumor is similar to the spreading of a contagious disease (see Example 3, Section 1.2) in that the number of people hearing the rumor each day is proportional to the product of the number who have heard the rumor previously and the number who have not heard the rumor. This is given by
+<br>
+![](Data 609 HW1 Pic/Q13_P341.png)
+<br>
+where k is a parameter that depends on how fast the rumor spreads and n is the number of days. Assume k D 0:001 and further assume that four people initially have heard the rumor. How soon will all 1000 employees have heard the rumor?
+
+Known Parameters:
+K = 0.001
+r0 = 4
+r_n+1 = 1000
+
+```{r}
+
+r <- 4
+k <- 0.001
+n<-0
+
+df <- data.frame(days = n, rumor_num = r)
+
+while (r < 1000) {
+    r <- r + k * r* (1000 - r)
+    df[n + 2, ] <- c(n+1, r)
+    n <- n + 1
+    
+    if (n > 10000) 
+        break 
+}
+
+DisplayDtable <- t(round(df,2))
+datatable(DisplayDtable)
+
+```
+
+<br>
+
+```{r}
+i=1
+while(round(df$rumor_num[i],2) < 1000){
+  i=i+1
+}
+
+print(paste("The day where all employees heard the rumor Is: ",df$days[i]))
+```
+
+It will take 12 days for all employees to have heard the rumor.
+
+
+## Q6 -P55
+
+An economist is interested in the variation of the price of a single product. It is ob- served that a high price for the product in the market attracts more suppliers. However, increasing the quantity of the product supplied tends to drive the price down. Over time, there is an interaction between price and supply. The economist has proposed the following model, where Pn represents the price of the product at year n, and Q n represents the quantity. Find the equilibrium values for this system.
+
+<br>
+![](Data 609 HW1 Pic/Q6_P551.png)
+<br>
+
+a. Does the model make sense intuitively? What is the signi cance of the constants 100 and 500? Explain the signi cance of the signs of the constants  0:1 and 0.2.
+b. Test the initial conditions in the following table and predict the long-term behavior.
+
+<br>
+![](Data 609 HW1 Pic/Q6_P552.png)
+<br>
+
+a- Yes, the model is intuitive. The 100 and 500 are the equilibrium value where price and quantity remains constant. The quantity has a positive effect on the price, as long as it does not exceed 500. If the price is over 100, the quantity will be increased. The constant -0.1 has to be negative indicates that the price will decrease by a ratio of 1/10. The constant 0.2 has to be positive to show that quantity will increase by a ratio of 1/5.
+
+```{r}
+cases<-function(p,q){
+model <- data.frame("n"= 0,"Price"=p ,"Quantity"=q)
+
+for (i in seq(1:50)){
+
+        p <- p - 0.1 * (q - 500)
+        q <- q + 0.2 * (p - 100)
+
+        model[i + 1, ] <- c(i, p, q)
+}
+  return(model)
+}
+
+caseA<-cases(100,500)
+caseb<-cases(200,500)
+casec<-cases(100,600)
+cased<-cases(100,400)
+
+g1 <- ggplot(data = caseA) + 
+  geom_line(aes(x = n, y = Quantity, color = "Quantity"))+
+  geom_line(aes(x = n, y = Price, color = "Price"))+
+  ylab("Values")+
+  ggtitle("Case A, price=100 Quantity=500")
+
+g2 <- ggplot(data = caseb) + 
+  geom_line(aes(x = n, y = Quantity, color = "Quantity"))+
+  geom_line(aes(x = n, y = Price, color = "Price"))+
+  ylab("Values")+
+  ggtitle("Case b, price=200 Quantity=500")
+
+g3 <- ggplot(data = casec) + 
+  geom_line(aes(x = n, y = Quantity, color = "Quantity"))+
+  geom_line(aes(x = n, y = Price, color = "Price"))+
+  ylab("Values")+
+  ggtitle("Case c, price=100 Quantity=600")
+
+g4 <- ggplot(data = cased) + 
+  geom_line(aes(x = n, y = Quantity, color = "Quantity"))+
+  geom_line(aes(x = n, y = Price, color = "Price"))+
+  ylab("Values")+
+  ggtitle("Case d, price=100 Quantity=400")
+
+grid.arrange(g1, g2,g3,g4, ncol = 2)    
+
+```
+
+
+Case A: represents the stable situation where (100,500) is the equilibrium point. Both price and
+quantity remain the same.
+
+Case B: The initial price is much higher than the equilibrium value, so the demand will be less,
+but the quantity increases for a long time, and the price will decrease dramatically.
+
+Case C: The price is 100 but the quantity is more than 500. The price will decrease until when the
+quantity goes below 500, where an increase in the price will be observed. Since it does not come
+to the equilibrium point, oscillations can be seen.
+
+Case D: The price is 100 and the quantity less than 500. The price and quantity will oscillate
+more than in the previous case, but in the end there is again a dramatic decrease of the price.
+<br>
+<br>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
