@@ -1,0 +1,471 @@
+---
+title: "HW_6"
+author: "Ali Harb"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(include = TRUE)
+```
+
+
+<br>
+
+## Libraries
+
+Required headers for performing visual and mathematical calculation.
+
+```{r warning=FALSE,message=FALSE}
+library(dplyr)
+library(tidyr)
+library(knitr)
+library(ggplot2)
+library(lpSolve)
+library(intpoint)
+library(DT)
+```
+
+## P251-Q2
+
+Nutritional Requirements-A rancher has determined that the minimum weekly nutritional requirements for an average-sized horse include 40 lb of protein, 20 lb of carbohydrates, and 45 lb of roughage. These are obtained from the following sources in varying amounts at the prices indicated:
+
+```{r}
+TheItems <- c("Hay","Oats","Feeding Blocks","High Protein Cocentration","Horse Requirement")
+TheProtein <- c(0.5,1,2,6,40)
+TheCarbs <- c(2,4,0.5,1,20)
+TheRoughage <- c(5,2,1,2.5,45)
+TheCost <- c(1.80,3.5,0.4,1,0)
+
+df <- data.frame("Protein" =TheProtein, "Carbs" =TheCarbs, "Roughage" =TheRoughage, "Cost"=TheCost)
+
+datatable(df,rownames=TheItems,
+          class ='cell-border stripe', options = list(
+           pageLength = 5,
+           lengthMenu = FALSE,
+           bFilter=FALSE,
+           initComplete = JS(
+           "function(settings, json) {",
+           "$(this.api().table().header()).css({'background-color':             '#255',      'color': '#fff'});","}")
+))
+
+```
+Formulate a mathematical model to determine how to meet the minimum nutritional requirements at minimum cost.
+
+Variables:
+\begin{eqnarray} x_1&=& \mathrm{hay~per~bale}\\ x_2&=& \mathrm{oats~per~sack}\\ x_3&=& \mathrm{feeding~blocks~per~block}\\ x_4&=& \mathrm{high~protein~concentrate~per~sack} \end{eqnarray}\
+
+Objective:
+
+
+\begin{eqnarray} Minimize: 1.8x_1&+&3.5x_2&+&0.4x_3&+&1.0&x&_4& \end{eqnarray}\
+
+Constraints:
+
+\begin{eqnarray} 0.5x_1&+&x_2&+&2x_3&+&6x_4 &\ge&40&&\textrm{(protein)}\\ 2x_1&+&4x_2&+&0.5x_3&+&x_4&\ge&20&&\textrm{(carbs)}\\ 5x_1&+&2x_2&+&x_3&+&2.5x_4&\ge&45&&\textrm{(roughage)} 
+\end{eqnarray}\
+\begin{eqnarray} Limit: x_1&,&x_2&,&x_3&,&&x&_4&&\ge&0&&\end{eqnarray}\.
+
+## P264_Q6
+<br>
+Solve the following problem using graphical analysis:
+
+Maximize 10x+35y subject to:
+
+\begin{eqnarray} 8x&+&6y&\le&48&&\textrm{(board-feet of lumber)}\\ 4x&+&y&\le&20&&\textrm{(hours of capacity)}\\ & &y&\ge&5&&\textrm{(demand)}\\ & & x,y & \ge&0&&\textrm{(nonnegativity)} \end{eqnarray}
+
+Two Constrains:
+
+limit: \begin{eqnarray} y\ge&0\end{eqnarray} 
+redundant: \begin{eqnarray} y\ge&5\end{eqnarray} 
+
+Recast the the inequalities as equations in y = mx + b form:
+
+\begin{eqnarray} y&=&-\frac{4}{3}x&+&8\\ y&=&-4x&+&20\\ y&=&5\\ x&=&0&&\end{eqnarray}
+
+```{r}
+# intersection points
+myint <- data.frame(x=c(0,0,2.25),y=c(8,5,5))
+df=data.frame(x=c(-3,8))
+
+# change legend
+
+# plot constraint boundary lines
+base <- ggplot(df,aes(x)) 
+base + stat_function(fun=function(x) -4/3*x+8, geom="line", aes(col='y=-4/3x+8'))+
+  stat_function(fun=function(x) -4*x+20, geom="line", aes(col='y=-4x+20')) +
+  stat_function(fun=function(x)5, geom="line", aes(col='y=5')) + 
+  geom_vline(xintercept=0, aes(col= 'x=0')) + 
+  geom_hline(yintercept= 0, aes(col='y=0')) + 
+  theme_bw() + 
+  labs(title = 'Graphical Analysis') + 
+  geom_point(data=myint, aes(x,y)) + 
+  annotate('text', x = 0, y = 9.2, label="(0, 8)", size=3 ) +
+  annotate('text', x = 0, y = 3.8, label="(0, 5)", size=3 ) + 
+  annotate('text', x = 2.25, y = 3.8, label="(9/4, 5)", size=3 )+
+  labs(color='Equations')
+
+```
+
+The solution to must occur at an intersection point of two or more constraints. All constraints must be satisfied at the point in question to be considered a possible solution.
+
+Based on our plot above and our constraint list, we know that solution must fall:
+
+  * In the first quadrant
+  * between the green and blue lines 
+  
+Based on these criteria, we can narrow our solution to three possible intersection points:
+
+  * point (0,5) , the intersection y=5 and x=0
+  * point (0,8) , the intersection of lines x=0 and  y= -4/3x + 8
+  * point(\frac{9}{4}, 5),the intersection of lines  -4/3x + 8 
+
+```{r}
+# objective function to be maximized 
+maxObjeFunc <- function(x,y) 10*x + 35*y
+
+# possible solutions
+f1 <- maxObjeFunc(0,5)
+f2 <- maxObjeFunc(0,8)
+f3 <- maxObjeFunc(9/4,5)
+
+# print possible solutions
+df <- data.frame(Locations=seq(1:3),X=c(0,0,9/4),Y=c(5,8,5),maxObjeFunc = c(f1,f2,f3))
+kable(df)
+```
+<br>
+
+The objective function is maximized at point (0,8) with a value of 280.
+
+  
+Alternatively, we can produce a graphical solution using the solve2dlp() function in the intpoint library.
+  
+```{r}
+# coefficients x and y for 10x + 35y
+XY_coef <- c(10,35)
+
+#original problem constraints:  
+
+C1 <- c(8,6,48)
+C2 <- c(4,1,20)
+C3 <- c(0,-1,-5) #inqequality  
+C4 <- c(-1,0,0)  #ineqaulity
+
+# matrix coefficients
+MCoef <- rbind(C1[1:2],C2[1:2],C3[1:2],C4[1:2])
+
+# right hand vector constrants
+rightHandVec <- c(C1[3],C2[3],C3[3],C4[3])
+
+# graphical solution
+solve2dlp(t=1,c = XY_coef,bm = rightHandVec, m = MCoef, ip=0,z=1)
+
+```
+  
+ 
+## P268_Q6
+
+Using the algebraic method of section 7.3, solve problem 6 from section 7.2
+
+As shown previously, the convex set in problem six comprises three linear constraints and two non-negativity constraints.
+
+We introduce non-negative "slack" variables z_1, z_2, and z_3 which measure the degree to which each constraint satisfies constraints 1, 2, and 3, respectively.
+
+Restate our objective and constraints with slack variables:
+
+Maximize
+10x+35y
+
+
+\begin{eqnarray} 8x+6y+z_1&=&48\\ 4x+y+z_2&=&20\\ -y+z_3&=&-5\\ x,y,z_1,z_2,z_3 & \ge&0 \end{eqnarray}
+
+
+
+Taking the entire set of five variables \left\{x, y, z1, z2, z3\right\}, we can determine \frac{5!}{3!2!} 10 possible intersection points to test as possible solutions.
+
+* 1st substitution x = 0, y = 0:
+
+\begin{eqnarray} z_1&=&48\\ z_2&=&20\\ z_3&=&-5 \end{eqnarray}
+
+<b> Result 1 - The P(0,0) is not a feasible solution for z3 < 0.</b>
+
+* 2nd substitution x = 0, z1 = 0:
+
+\begin{eqnarray} 6y&=&48 => y=8\\ y+z_2&=&20\\ -y+z_3&=&-5 \end{eqnarray}
+
+Substitute y with 8 into 2nd and 3rd equations:
+
+\begin{eqnarray} y&=&8\\ z_2&=&12\\ z_3&=&3 \end{eqnarray}
+
+<b> Result 2 - Satisfied constrant with P(0,8) as a feasible intersection point.</b>
+
+* 3rd substitution x = 0, z2 = 0:
+
+\begin{eqnarray} 6y+z_1&=&48\\ y&=&20\\ -y+z_3&=&-5 \end{eqnarray}
+
+Substituting y = 20 into 1st and 3rd equations:
+
+\begin{eqnarray} z_1&=&-72\\ y&=&20\\ z_3&=&15 \end{eqnarray}
+
+<b> Result 3 - The P(0,20) is not a feasible solution because z1 < 0.</b>
+
+* 4th substitution x = 0, z3 = 0:
+
+\begin{eqnarray} 6y+z_1&=&48\\ y+z_2&=&20\\ -y&=&-5 => y=5 \end{eqnarray}
+
+Substituting y=5 into 1st and 2nd equations:
+
+\begin{eqnarray} z_1&=&18\\ z_2&=&15\\ y&=&5 \end{eqnarray}
+
+<b> Result 4 - Satisfied constrant with P(0,5) as a feasible intersection point.</b>
+
+* 5th substitution y = 0, z1 = 0:
+
+\begin{eqnarray} 8x&=&48 =>x=6\\4x+z_2&=&20\\ z_3&=&-5 \end{eqnarray}
+
+Substituting x = 6 into 2nd and 3rd equations:
+
+\begin{eqnarray} x&=&6\\ z_2&=&-4\\ z_3&=&-5 \end{eqnarray}
+
+<b> Result 5 - The P(6,0) is not a feasible intersection point with z2 and z3 < 0.</b>
+
+* 6th substitution y = 0, z2 = 0:
+
+\begin{eqnarray} 8x+z_1&=&48\\ 4x&=&20 => x=5\\ z_3&=&-5 \end{eqnarray}
+
+Substituting x = 5 into 1st and 3rd equations:
+
+\begin{eqnarray} z_1&=&8\\ x&=&5\\ z_3&=&-5 \end{eqnarray}
+
+<b> Result 6 - The P(5,0) is not a feasible intersection point with z3 < 0.</b>
+
+* 7th substitution y = 0, z3 = 0:
+
+\begin{eqnarray} 8x+z_1&=&48\\ 4x+z_2&=&20\\ 0&=&-5 \end{eqnarray}
+
+<b> Result 7 - No solution to this system where 0 != -5.</b>
+
+* 8th substitution z1 = 0, z2 = 0:
+
+\begin{eqnarray} 8x+6y&=&48\\ 4x+y&=&20\\ -y + z_3&=&-5 \end{eqnarray}
+
+Substituting y = 20 - 4x into the first equationand solve for x:
+
+\begin{eqnarray} 8x+6(20-4x)&=&48\\ -16x&=&-72\\ x&=&4.5 \end{eqnarray}
+
+Substituting X = 4.5 into the other two equations:
+\begin{eqnarray} x=&\frac{9}{2} &and& y=2\\ y&=&2\\ z_3&=&-3 \end{eqnarray}
+
+<b> Result 8 - The P(9/2,2) is not a feasible intersection because z3 < 0.</b>
+
+* 9th substitution z1 = 0, z3 = 0:
+
+\begin{eqnarray} 8x+6y&=&48\\ 4x+y+z_2&=&20\\ -y &=&-5 => y=5 \end{eqnarray}
+
+Substituting y = 5 into the 1st equation:
+
+\begin{eqnarray} 8x+6(5)&=&48\\ 8x&=&18\\ x = &\frac{9}{4} \end{eqnarray}
+
+Substituting y = 5 and x = 9/4 into the 2nd equation:
+
+\begin{eqnarray} 4&(\frac{9}{4})+5+z_2&=&20\\ z_2=6 \end{eqnarray}
+
+
+It yield the following:
+
+\begin{eqnarray} x&=&\frac{9}{4} \\ z_2&=&6\\ y&=&5 \end{eqnarray}
+
+<b> Result 9 - Satisfied constrant with P(9/4,5) as a feasible solution.</b>
+
+* 10th substitution z2 = 0, z3 = 0
+
+\begin{eqnarray} 8x+6y + z_1&=&48\\ 4x + y&=&20\\ -y&=&-5 => y=5 \end{eqnarray}
+
+Substituting y = 5 into 2nd equation:
+
+\begin{eqnarray} 4x-5&=&20\\ x&=&\frac{15}{4}\end{eqnarray}
+
+Substituting y = 5 and x = 15/4 into 1sd equation:
+
+\begin{eqnarray} 8(\frac{15}{4})+6(5) + z_1&=&48\\ 60+z_1&=&48\\ z_1&=&-12 \end{eqnarray}
+
+It yield the following:
+
+\begin{eqnarray} z_1&=&-12\\ x&=&\frac{15}{4}\\ y&=&5 \end{eqnarray}
+
+<b> Result 10 - The P(15/4,0) is not a feasible intersection point with z1 < 0.</b>
+
+Now we have three feasible points, (0,8), (0,5), and (9/4,5). Let's calculate the objective function at all three points:
+
+
+```{r}
+f1 <- 10*0 + 35*8
+f2 <- 10*0 + 35*5
+f3 <- 10*9/4 + 35*5
+
+df <- data.frame(points = c(1,2,3), x = c(0,0,9/4), y = c(8,5,5), maxObjeFunc = c(f1,f2,f3))
+kable(df)
+```
+
+<b> Conclusion - </b> The algebraic result produces the same result as visual with p(0,8) as maximum value
+
+
+## P278_Q6
+
+Use the Simplex Method to resolve Problem 6 in Section 7.2
+
+_Step 1: Matrix Format_
+
+Lets describe the problem in matrix format with slack variables s1,s2,s3 for the constraints in the original problem. We also introduce the objective function as an additional constraint with a new slack variable, s:
+\begin{eqnarray} 8x+6y+s_1&=&48\\ 4x+y+s_2&=&20\\ -y+s_3&=&-5\\ -10x-35y + s&=&0 \end{eqnarray}
+
+
+```{r}
+# original tableau
+df <- data.frame(x = c(8,4,0,-10), y = c(6,1,-1,-35), s1 = c(1,0,0,0), s2 = c(0,1,0,0), s3 = c(0,0,1,0), s = c(0,0,0,1), RHS = c(48,20,-5,0))
+
+kable(df)
+```
+
+
+Dependent variables: \begin{eqnarray} \left\{s_1,s_2,s_3,s\right\} \end{eqnarray}
+
+Independent variables: x = y = 0
+
+Extreme point: (x, y) = (0,0)
+
+Value of objective function: s = 0
+
+_Step 2: Initial Extreme Point_
+
+Start with the extrems point P(0,0).
+
+_Step 3: Optimality Test for Entering Variable_
+
+Apply the optimality test to choose y as the variable to enter the dependent set. 
+
+_Step 4: Feasibility Test_
+
+Divide the right-hand-side values by the components for the entering variable y in each of the equations.
+
+
+```{r}
+# tableau with ratio
+df$Ratio <- df$RHS / df$y
+#df[4,8] <- ''
+kable(df)
+```
+<br>
+
+The smallest positive ratio is 5, corresponding to slack variable s3. Thus, s3 will be the exiting dependent variable.
+
+_Step 5: Pivot_
+
+Pivot to find values of the new dependent variables y,s1,s2,s when the independent variables x and s3 are set to zero.
+
+Eliminate the entering variable y from all equations that do not contain the exiting variable, s3 and divide the row containing the exiting variable (row 3) by the coefficient of the entering variable in that row ( coefficient of y). Then eliminate y from the remaining rows.
+
+```{r}
+# elimination procedures
+df[3,] <- -1 * df[3,]
+df[1,] <- -6 * df[3,] + df[1,]
+df[2,] <- -1 * df[3,] + df[2,]
+df[4,] <- 35 * df[3,] + df[4,]
+
+#print new tableau
+df <- df[,1:7]
+kable(df)
+```
+<br>
+
+Dependent variables:\begin{eqnarray} \left\{y,s_1,s_2,s\right\} \end{eqnarray}
+
+Independent variables: x = s3 = 0
+
+Extreme point: (x,y)= (0,5)
+
+_Step 6: Optimality Test_
+
+The entering variable is s3, corresponding to the coefficient in the last raw with the largest absolute value.
+
+_Step 7: Feasibility Test_
+
+Compute the ratios for the RHS:
+
+
+```{r}
+# tableau with ratios
+df$Ratio <- df$RHS / df$s3
+df[4,8] <- ''
+kable(df)
+```
+
+
+Take s1 as the exiting variable because it corresponds to the minimum positive ratio of 3.
+
+_Step 8: Pivot_
+
+Pivot to find values of the new dependent variables y,s2,s3,s when the independent variables x and s1 are set to zero.
+
+Eliminate the entering variable s3 from all equations that do not contain the exiting variable, s1 and divide the row containing the exiting variable (row 1) by the coefficient of the entering variable in that row (coefficient of s3). Then eliminate s3 from the remaining rows.
+
+
+```{r}
+# elimination procedures
+df[1,] <- 1/6 * as.numeric(df[1,])
+df[2,] <- -1 * as.numeric(df[1,]) + as.numeric(df[2,])
+df[3,] <- as.numeric(df[1,]) + as.numeric(df[3,])
+df[4,] <- 35 * as.numeric(df[1,]) + as.numeric(df[4,])
+
+# print new tableau
+df <- df[,1:7]
+kable(df)
+```
+<br>
+
+Dependent variables:\begin{eqnarray} \left\{y,s_2,s_3,s\right\} \end{eqnarray}
+
+Independent variables: x = s1 = 0
+
+Extreme point: (x,y)= (0,8)
+
+Value of objective function: s = 280
+
+_Step 9: Optimality_
+
+because there are no negative coefficients in the bottom row and has the largest value, x = 0, y = 8 gives the optimal solution s=280.
+
+
+## P284_Q1
+
+For the example problem in this section, determine the sensitivity of the optimal solution to a change in c2 using the objective function
+
+\begin{eqnarray} 25x_1&+&c_2x_2 \end{eqnarray}
+
+
+Maximize:  \begin{eqnarray} z= 25x_1&+&c_2x_2 \end{eqnarray}
+
+slope: \begin{eqnarray} -\frac{25}{c_2} \end{eqnarray}
+
+
+Since the current extreme point (12,15) is optimal between the slop of objective function between -5/4(labor Slope) and -3/2(lumber Slope) as the C2 increases.
+
+The range of value of c1/c2 should be as follow
+
+\begin{eqnarray} \frac{5}{4}&\ge&\frac{25}{c_2}\ge&\frac{2}{3} \end{eqnarray}
+
+\begin{eqnarray} -\frac{5}{4}&\le&-\frac{25}{c_2}\le&-\frac{2}{3} \end{eqnarray}
+
+The lowest bound: 
+
+\begin{eqnarray} -\frac{5}{4}&\le&-\frac{25}{c_2} &&=>& C_2\le&20 \end{eqnarray}
+
+The Upper bound:
+
+\begin{eqnarray} -\frac{25}{c_2}\le&-\frac{2}{3}  &&=>& C_2\le&37.5 \end{eqnarray}
+
+thus, the range of values for which the current extreme point remains optimal is given by the following expression:
+
+\begin{eqnarray} 20\le&C_2\le&37.5 \end{eqnarray}
+
+<br>
+<br>
